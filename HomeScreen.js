@@ -6,6 +6,8 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}> 
       <Text style={{ fontSize: 24, color: COLORS.primary }}>Bienvenido a MindCareIA</Text>
+      <Text style={{ fontSize: 18, color: COLORS.text, marginTop: 16, textAlign: 'center' }}>
+        Gracias por formar de nuestra beta cerrada.</Text>
     </View>
   );
 }

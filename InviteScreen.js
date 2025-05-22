@@ -1,96 +1,133 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from './theme';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const INVITE_CODE = 'axopunk2025';
-
-export default function InviteScreen({ navigation }) {
+const InviteScreen = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [lockout, setLockout] = useState(false);
-  const [countdown, setCountdown] = useState(10);
+  const navigation = useNavigation();
 
-  React.useEffect(() => {
-    let timer;
-    if (lockout && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (lockout && countdown === 0) {
-      setLockout(false);
-      setAttempts(0);
-      setCountdown(10);
-      setError('');
-    }
-    return () => clearTimeout(timer);
-  }, [lockout, countdown]);
-
-  const handleValidate = () => {
+  const handleValidate = async () => {
     if (lockout) return;
-    if (code.trim().toLowerCase() === INVITE_CODE) {
-      setError('');
-      setAttempts(0);
-      navigation.replace('MainTabs');
-    } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      if (newAttempts >= 3) {
-        setLockout(true);
-        setError('Demasiados intentos. Espera 10 segundos...');
+    if (!code.trim()) {
+      setError('Por favor ingresa un código.');
+      return;
+    }
+    const codeLower = code.trim().toLowerCase();
+    try {
+      const docRef = doc(db, 'codeInvite', codeLower);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        if (userData.usado === true) {
+          setError('Este código ya ha sido utilizado.');
+          return;
+        }
+        await updateDoc(docRef, { usado: true });
+        await AsyncStorage.setItem('codigoValidado', 'true'); // Guardar flag local
+        await AsyncStorage.setItem('codigoValidadoId', codeLower); // Guardar el ID del código
+        setError('');
+        setAttempts(0);
+        navigation.replace('MainTabs', { user: userData });
       } else {
-        setError('Código incorrecto');
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        if (newAttempts >= 3) {
+          setLockout(true);
+          setError('Demasiados intentos. Espera 10 segundos...');
+          setTimeout(() => {
+            setLockout(false);
+            setAttempts(0);
+            setError('');
+          }, 10000);
+        } else {
+          setError('Código incorrecto');
+        }
       }
+    } catch (error) {
+      console.error('Error validando código:', error);
+      setError('Error al validar el código. Intenta más tarde.');
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: COLORS.background }]}> 
-      <Text style={{ fontSize: 22, marginBottom: 20, color: COLORS.text }}>Ingresa tu código de invitación</Text>
+    <View style={[styles.container, { backgroundColor: "#F9F9F6" }]}>
+      <Text style={styles.title}>Ingresa tu código de invitación</Text>
       <TextInput
-        style={[styles.input, { color: COLORS.text, borderColor: COLORS.primary, backgroundColor: '#fff' }]}
-        placeholder="Código de invitación"
-        placeholderTextColor={COLORS.textSecondary}
+        style={styles.input}
         value={code}
         onChangeText={setCode}
-        autoCapitalize="none"
-        autoCorrect={false}
         editable={!lockout}
+        placeholder="Código"
+        autoCapitalize="none"
       />
-      {lockout && (
-        <Text style={{ color: COLORS.error, marginTop: 10 }}>
-          Demasiados intentos. Espera {countdown} segundos...
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.buttonContainer}>
+        <Text
+          style={[
+            styles.button,
+            lockout ? styles.buttonDisabled : styles.buttonActive,
+          ]}
+          onPress={!lockout ? handleValidate : undefined}
+        >
+          Validar
         </Text>
-      )}
-      {!lockout && error ? <Text style={{ color: COLORS.error, marginTop: 10 }}>{error}</Text> : null}
-      <TouchableOpacity style={[styles.button, lockout && { opacity: 0.5 }]} onPress={handleValidate} disabled={lockout}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Validar</Text>
-      </TouchableOpacity>
+      </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 20,
+    marginBottom: 16,
+    fontWeight: 'bold',
   },
   input: {
-    width: '100%',
+    width: '80%',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: '#ccc',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    padding: 10,
+    marginBottom: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
-    color: COLORS.text,
+  },
+  error: {
+    color: 'red',
+    marginBottom: 8,
+  },
+  buttonContainer: {
+    width: '80%',
+    marginTop: 8,
   },
   button: {
-    backgroundColor: COLORS.primary,
+    textAlign: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 32,
     borderRadius: 8,
-    marginTop: 10,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  buttonActive: {
+    backgroundColor: '#7C9CBF', // COLORS.primary
+    color: '#fff',
+  },
+  buttonDisabled: {
+    backgroundColor: '#A9D6C3', // COLORS.secondary
+    color: '#6B6B6B', // COLORS.textSecondary
   },
 });
+
+export default InviteScreen;

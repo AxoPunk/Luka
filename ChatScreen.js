@@ -14,7 +14,7 @@ export default function ChatScreen() {
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState
-        scalesPageToFit={true} // Para Android
+        scalesPageToFit={false} // Bloquea zoom en Android
         useWebKit={true} // Para iOS
         automaticallyAdjustContentInsets={false}
         contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
@@ -23,6 +23,11 @@ export default function ChatScreen() {
           meta.setAttribute('name', 'viewport');
           meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
           document.getElementsByTagName('head')[0].appendChild(meta);
+          document.body.style.overflow = 'hidden';
+          document.body.style.touchAction = 'manipulation';
+          document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+          document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+          document.addEventListener('gestureend', function (e) { e.preventDefault(); });
         `}
       />
     </View>
