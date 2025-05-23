@@ -56,8 +56,8 @@ const InviteScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: "#F9F9F6" }]}>
-      <Text style={styles.title}>Ingresa tu código de invitación</Text>
+    <View style={[styles.container, { backgroundColor: "#F9F9F6"}]}>
+      <Text style={[styles.title]}>Ingresa tu código de invitación</Text>
       <TextInput
         style={styles.input}
         value={code}
