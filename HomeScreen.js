@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Animated, Easing, Dimensions, ImageBackground, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Animated, Easing, Dimensions, ImageBackground, Modal, Pressable, ScrollView, TextInput } from 'react-native';
 import { COLORS } from './theme';
-import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from 'firebase/firestore';
 import { app } from './firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
 
 const CARD_WIDTH = Dimensions.get('window').width * 0.85;
 
@@ -23,6 +24,11 @@ export default function HomeScreen() {
   const [tipOfDay, setTipOfDay] = useState(null);
   const [favoriteTips, setFavoriteTips] = useState([]);
   const [helpCenters, setHelpCenters] = useState([]);
+  const [emotionalData, setEmotionalData] = useState([]);
+  const [addEmotionModalVisible, setAddEmotionModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [newEmotion, setNewEmotion] = useState('');
+  const [newNote, setNewNote] = useState('');
 
   const emojiList = ['😊', '🌞', '🌈', '✨', '💫', '🌻', '🌟', '🦋', '🍀', '💚', '😃', '🙌', '🥰', '😺', '🧘‍♂️', '🧡', '🌸', '☀️', '🌼', '😎'];
 
@@ -188,6 +194,49 @@ export default function HomeScreen() {
     fetchHelpCenters();
   }, []);
 
+  // Obtener datos emocionales del usuario
+  useEffect(() => {
+    const fetchEmotionalData = async () => {
+      try {
+        const code = await AsyncStorage.getItem('codigoValidadoId');
+        if (!code) return;
+        const db = getFirestore(app);
+        const emocionesCollection = collection(db, `users/${code}/emociones`);
+        const querySnapshot = await getDocs(emocionesCollection);
+        const emociones = [];
+        querySnapshot.forEach((doc) => {
+          emociones.push({ id: doc.id, ...doc.data() });
+        });
+        setEmotionalData(emociones);
+      } catch (error) {
+        console.log('Error al obtener datos emocionales:', error);
+      }
+    };
+    fetchEmotionalData();
+  }, []);
+
+  const handleAddEmotion = async () => {
+    try {
+      const code = await AsyncStorage.getItem('codigoValidadoId');
+      if (!code) return;
+      const db = getFirestore(app);
+      const emocionesDocRef = doc(db, `users/${code}/emociones`, selectedDate);
+      await setDoc(emocionesDocRef, {
+        Nota: newNote,
+        emocion: newEmotion,
+        fecha: selectedDate,
+      });
+      setEmotionalData((prev) => [...prev, { id: selectedDate, Nota: newNote, emocion: newEmotion, fecha: selectedDate }]);
+      setAddEmotionModalVisible(false);
+      setNewEmotion('');
+      setNewNote('');
+      alert('Emoción agregada con éxito.');
+    } catch (error) {
+      console.log('Error al agregar emoción:', error);
+      alert('Hubo un error al agregar la emoción.');
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
@@ -314,6 +363,34 @@ export default function HomeScreen() {
                 </ScrollView>
               </View>
             )}
+            {/* Calendario de emociones debajo de "Contactar a un profesional" */}
+            {showCards && (
+              <View style={styles.emotionalCalendarSection}>
+                <Text style={styles.emotionalCalendarTitle}>Calendario de emociones</Text>
+                <Calendar
+                  style={styles.calendar}
+                  markedDates={emotionalData.reduce((acc, emotion) => {
+                    acc[emotion.id] = { marked: true, dotColor: '#7C9CBF' };
+                    return acc;
+                  }, {})}
+                  onDayPress={(day) => {
+                    const selectedEmotion = emotionalData.find((emotion) => emotion.id === day.dateString);
+                    setSelectedDate(day.dateString);
+                    if (selectedEmotion) {
+                      alert(`Emoción del ${day.dateString}: ${selectedEmotion.description || 'Sin descripción'}`);
+                    } else {
+                      setAddEmotionModalVisible(true);
+                    }
+                  }}
+                  theme={{
+                    selectedDayBackgroundColor: '#7C9CBF',
+                    todayTextColor: '#7C9CBF',
+                    arrowColor: '#7C9CBF',
+                    dotColor: '#7C9CBF',
+                  }}
+                />
+              </View>
+            )}
           </View>
         )}
         <View style={styles.container}>
@@ -327,23 +404,6 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 18, color: COLORS.text, marginTop: 16, textAlign: 'center' }}>
                 Gracias por formar de nuestra beta cerrada.</Text>
             </Animated.View>
-          )}
-          {showCards && (
-            <View style={styles.cardsContainer}>
-              {tips.map((tip, idx) => (
-                tip.imageUrl ? (
-                  <ImageBackground key={idx} source={{ uri: tip.imageUrl }} style={styles.card} imageStyle={styles.cardBgImage}>
-                    <View style={styles.overlay}>
-                      <Text style={styles.cardText}>{tip.text}</Text>
-                    </View>
-                  </ImageBackground>
-                ) : (
-                  <View key={idx} style={styles.card}>
-                    <Text style={styles.cardText}>{tip.text}</Text>
-                  </View>
-                )
-              ))}
-            </View>
           )}
         </View>
       </ScrollView>
@@ -380,6 +440,53 @@ export default function HomeScreen() {
             <Pressable style={styles.modalButton} onPress={() => setModalVisible(false)}>
               <Text style={styles.modalButtonText}>Cerrar</Text>
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+      {/* Modal para agregar emoción */}
+      <Modal
+        visible={addEmotionModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddEmotionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Agregar emoción para {selectedDate}</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Selecciona tu emoción:</Text>
+              <View style={styles.emotionPickerContainer}>
+                {['Feliz', 'Triste', 'Ansioso', 'Enojado', 'Relajado'].map((emotion) => (
+                  <TouchableOpacity
+                    key={emotion}
+                    style={[
+                      styles.emotionButton,
+                      newEmotion === emotion && styles.emotionButtonSelected,
+                    ]}
+                    onPress={() => setNewEmotion(emotion)}
+                  >
+                    <Text style={styles.emotionButtonText}>{emotion}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Comentario (opcional):</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Escribe un comentario"
+                value={newNote}
+                onChangeText={setNewNote}
+              />
+            </View>
+            <View style={styles.buttonContainer}>
+              <Pressable style={[styles.actionButton, styles.saveButton]} onPress={handleAddEmotion}>
+                <Text style={styles.actionButtonText}>Guardar</Text>
+              </Pressable>
+              <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={() => setAddEmotionModalVisible(false)}>
+                <Text style={styles.actionButtonText}>Cancelar</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -567,6 +674,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  modalInput: {
+    height: 40,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    width: '100%',
+    fontSize: 16,
+  },
   // Estilos para el tip del día
   tipOfDayContainer: {
     width: '100%',
@@ -657,5 +774,94 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 15,
     marginLeft: 6,
+  },
+  // Estilos para el calendario de emociones
+  emotionalCalendarSection: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  emotionalCalendarTitle: {
+    fontSize: 17,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  calendar: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    backgroundColor: '#fff',
+  },
+  // Estilos para el modal de agregar emoción
+  formGroup: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  emotionPickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  emotionButton: {
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+    elevation: 2,
+  },
+  emotionButtonSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  emotionButtonText: {
+    color: COLORS.text,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  textInput: {
+    height: 40,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    width: '100%',
+    fontSize: 16,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  actionButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    width: '48%',
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.secondary,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

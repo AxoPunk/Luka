@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { collection, setDoc, getDocs } from 'firebase/firestore';
 
 const InviteScreen = () => {
   const [code, setCode] = useState('');
@@ -75,6 +76,44 @@ const InviteScreen = () => {
     if (!lockout) {
       animateButton();
       handleValidate();
+    }
+  };
+
+  // Función para guardar datos emocionales en Firestore
+  const saveEmotionalData = async (date, emotions) => {
+    try {
+      const codeInviteId = await AsyncStorage.getItem('codigoValidadoId');
+      if (!codeInviteId) {
+        throw new Error('No se encontró un código de invitación válido.');
+      }
+
+      const docRef = doc(db, `users/${codeInviteId}/emociones`, date);
+      await setDoc(docRef, emotions);
+      console.log('Datos emocionales guardados correctamente.');
+    } catch (error) {
+      console.error('Error al guardar datos emocionales:', error);
+    }
+  };
+
+  // Función para recuperar datos emocionales desde Firestore
+  const getEmotionalData = async () => {
+    try {
+      const codeInviteId = await AsyncStorage.getItem('codigoValidadoId');
+      if (!codeInviteId) {
+        throw new Error('No se encontró un código de invitación válido.');
+      }
+
+      const emocionesCollection = collection(db, `users/${codeInviteId}/emociones`);
+      const querySnapshot = await getDocs(emocionesCollection);
+      const emociones = [];
+      querySnapshot.forEach((doc) => {
+        emociones.push({ id: doc.id, ...doc.data() });
+      });
+      console.log('Datos emocionales recuperados:', emociones);
+      return emociones;
+    } catch (error) {
+      console.error('Error al recuperar datos emocionales:', error);
+      return [];
     }
   };
 
