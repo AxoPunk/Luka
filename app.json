@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "",
-    "slug": "MindCare IA",
+    "name": "MindCare IA",
+    "slug": "MindCare_IA",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/MindCare.svg",
+    "icon": "./assets/MindCare.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/MindCare.svg",
+      "image": "./assets/MindCare.png",
       "resizeMode": "contain",
       "backgroundColor": "#7C9CBF"
     },
@@ -24,6 +24,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fa496d4f-51b6-4d45-87d3-4f3e4c2bdd56"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fa496d4f-51b6-4d45-87d3-4f3e4c2bdd56"
     }
   }
 }

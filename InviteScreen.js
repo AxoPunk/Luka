@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
@@ -11,6 +11,22 @@ const InviteScreen = () => {
   const [attempts, setAttempts] = useState(0);
   const [lockout, setLockout] = useState(false);
   const navigation = useNavigation();
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  const animateButton = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.92,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handleValidate = async () => {
     if (lockout) return;
@@ -55,6 +71,13 @@ const InviteScreen = () => {
     }
   };
 
+  const handlePress = () => {
+    if (!lockout) {
+      animateButton();
+      handleValidate();
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: "#F9F9F6"}]}>
       <Text style={[styles.title]}>Ingresa tu código de invitación</Text>
@@ -68,15 +91,20 @@ const InviteScreen = () => {
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.buttonContainer}>
-        <Text
-          style={[
-            styles.button,
-            lockout ? styles.buttonDisabled : styles.buttonActive,
-          ]}
-          onPress={!lockout ? handleValidate : undefined}
-        >
-          Validar
-        </Text>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePress}
+            disabled={lockout}
+            style={[
+              styles.button,
+              lockout ? styles.buttonDisabled : styles.buttonActive,
+              { alignItems: 'center', justifyContent: 'center' }, // Centrado
+            ]}
+          >
+            <Text style={{ color: lockout ? '#6B6B6B' : '#fff', fontWeight: 'bold', fontSize: 18, textAlign: 'center', width: '100%' }}>Validar</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );

@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Button, ActivityIndicator } from 'react-native';
 import { COLORS } from './theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const route = useRoute();
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState(null); // null: no autenticado, {}: invitado, objeto: Google
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const checkAuth = async () => {
+      // Verifica si hay usuario invitado por código
       const code = await AsyncStorage.getItem('codigoValidadoId');
       if (!code) {
         navigation.replace('Invite');
@@ -23,14 +23,12 @@ export default function ProfileScreen() {
         const docRef = doc(db, 'codeInvite', code);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setUser(docSnap.data());
+          setUser({ ...docSnap.data(), invitado: true });
         }
-      } catch (e) {
-        // opcional: manejar error
-      }
+      } catch (e) {}
       setLoading(false);
     };
-    fetchUser();
+    checkAuth(); 
   }, [navigation]);
 
   const handleLogout = async () => {
@@ -42,22 +40,29 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: COLORS.background }]}> 
+        <ActivityIndicator color={COLORS.primary} size="large" />
         <Text style={{ color: COLORS.primary }}>Cargando perfil...</Text>
       </View>
     );
   }
 
+  if (!user) {
+    // No autenticado
+    return (
+      <View style={[styles.container, { backgroundColor: COLORS.background }]}> 
+        <Text style={{ fontSize: 24, color: COLORS.primary, marginBottom: 16 }}>Perfil</Text>
+        <Text style={styles.logoutButton} onPress={handleLogout}>Cerrar sesión</Text>
+      </View>
+    );
+  }
+
+  // Invitado por código
   return (
     <View style={[styles.container, { backgroundColor: COLORS.background }]}> 
       <Text style={{ fontSize: 24, color: COLORS.primary, marginBottom: 16 }}>Perfil</Text>
       <Text style={{ fontSize: 18, color: COLORS.text, marginBottom: 8 }}>Nombre: {user.nombre || 'No disponible'}</Text>
       <Text style={{ fontSize: 18, color: COLORS.text, marginBottom: 24 }}>Email: {user.email || 'No disponible'}</Text>
-      <Text
-        style={styles.logoutButton}
-        onPress={handleLogout}
-      >
-        Cerrar sesión
-      </Text>
+      <Text style={styles.logoutButton} onPress={handleLogout}>Cerrar sesión</Text>
     </View>
   );
 }
