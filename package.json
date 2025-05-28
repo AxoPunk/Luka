@@ -8,6 +8,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@azure/identity": "^4.10.0",
     "@babel/runtime": "^7.27.1",
     "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.1.0",
@@ -23,6 +24,7 @@
     "firebase": "^11.8.1",
     "lodash": "^4.17.21",
     "lodash.isempty": "^4.4.0",
+    "openai": "^4.103.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
