@@ -22,8 +22,8 @@ export default function ChatScreen() {
     setInput('');
 
     try {
-      const endpoint = 'https://lukaapp.openai.azure.com/openai/deployments/LukaApp/chat/completions?api-version=2025-01-01-preview';
-      const apiKey = '7uW3hE8Smoc8H29IVHmTKIlCJV8mq7mnSHTeqSmOuoPmHG7pRbBXJQQJ99BEACYeBjFXJ3w3AAABACOG4tXh'; // Tu clave API
+      const endpoint = ''; //URL Azure IA Studio
+      const apiKey = ''; // Tu clave API
 
       const response = await fetch(endpoint, {
         method: 'POST',
